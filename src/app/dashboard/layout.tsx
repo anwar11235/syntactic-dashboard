@@ -3,22 +3,22 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import Sidebar from '@/components/layout/Sidebar'
 
-export default function Home() {
-  const router = useRouter()
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const { user, loading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.push('/dashboard')
-      } else {
-        router.push('/auth/login')
-      }
+    if (!loading && !user) {
+      router.push('/auth/login')
     }
   }, [user, loading, router])
 
-  // Show loading state while checking auth
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -27,5 +27,16 @@ export default function Home() {
     )
   }
 
-  return null
-}
+  if (!user) {
+    return null
+  }
+
+  return (
+    <div className="flex h-screen">
+      <Sidebar />
+      <main className="flex-1 overflow-auto bg-slate-50 p-8">
+        {children}
+      </main>
+    </div>
+  )
+} 
