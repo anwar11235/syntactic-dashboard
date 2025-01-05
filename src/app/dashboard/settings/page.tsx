@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,17 +10,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, Bell, Shield, Palette, Mail, Phone, Globe, Lock } from "lucide-react"
 import { toast } from "sonner"
+import { useProfile } from '@/contexts/ProfileContext'
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const { profileData, updateProfile } = useProfile()
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    company: '',
+    gender: '',
+    age: '',
+    purpose: '',
+    phoneNumber: '',
+    timezone: ''
+  })
 
-  const handleSave = () => {
+  // Load profile data when component mounts
+  useEffect(() => {
+    if (profileData) {
+      setFormData(profileData)
+    }
+  }, [profileData])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [id]: value
+    }))
+  }
+
+  const handleSave = async () => {
     setIsLoading(true)
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await updateProfile(formData)
+      toast.success("Profile updated successfully")
+    } catch (error) {
+      toast.error("Failed to update profile")
+    } finally {
       setIsLoading(false)
-      toast.success("Settings saved successfully")
-    }, 1000)
+    }
   }
 
   return (
@@ -46,7 +76,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
               <CardDescription>
-                Update your profile details and contact information
+                Update your profile details and personal information
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -59,20 +89,67 @@ export default function SettingsPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="John Doe" />
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input 
+                    id="fullName" 
+                    placeholder="John Doe" 
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="john@example.com" 
+                    value={formData.email}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input id="company" placeholder="Acme Inc." />
+                  <Label htmlFor="company">Company Name</Label>
+                  <Input 
+                    id="company" 
+                    placeholder="Acme Inc." 
+                    value={formData.company}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Input id="role" placeholder="Developer" />
+                  <Label htmlFor="gender">Gender</Label>
+                  <select
+                    id="gender"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input 
+                    id="age" 
+                    type="number" 
+                    placeholder="25" 
+                    value={formData.age}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="purpose">Purpose of using Syntactic</Label>
+                  <textarea
+                    id="purpose"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 min-h-[80px]"
+                    placeholder="Tell us how you plan to use Syntactic..."
+                    value={formData.purpose}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -93,24 +170,27 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-4">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <div className="flex-1 space-y-1">
-                  <Label>Email Notifications</Label>
-                  <Input placeholder="john@example.com" />
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
                 <Phone className="h-4 w-4 text-muted-foreground" />
                 <div className="flex-1 space-y-1">
-                  <Label>Phone Number</Label>
-                  <Input placeholder="+1 (555) 000-0000" />
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input 
+                    id="phoneNumber" 
+                    placeholder="+1 (555) 000-0000" 
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </div>
               <div className="flex items-center space-x-4">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 <div className="flex-1 space-y-1">
-                  <Label>Timezone</Label>
-                  <Input placeholder="Pacific Time (PT)" />
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Input 
+                    id="timezone" 
+                    placeholder="Pacific Time (PT)" 
+                    value={formData.timezone}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </div>
             </CardContent>

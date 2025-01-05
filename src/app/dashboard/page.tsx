@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Activity, Users, ShoppingBag, GitBranch, CheckCircle, Circle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
+import { useProfile } from '@/contexts/ProfileContext'
+import { useRouter } from 'next/navigation'
+import { useConnections } from '@/contexts/ConnectionContext'
 
 interface OnboardingStep {
   id: string
@@ -27,18 +30,21 @@ const activityData = [
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { isProfileComplete } = useProfile()
+  const { hasConnections } = useConnections()
+  const router = useRouter()
   const [steps, setSteps] = useState<OnboardingStep[]>([
     {
       id: '1',
       title: 'Complete your profile',
       description: 'Add your personal information and preferences',
-      completed: false,
+      completed: isProfileComplete,
     },
     {
       id: '2',
       title: 'Connect your first data source',
       description: 'Import data from your favorite platforms',
-      completed: false,
+      completed: hasConnections,
     },
     {
       id: '3',
@@ -54,10 +60,31 @@ export default function DashboardPage() {
     },
   ])
 
-  const toggleStep = (id: string) => {
-    setSteps(steps.map(step => 
-      step.id === id ? { ...step, completed: !step.completed } : step
-    ))
+  // Update steps when profile completion status changes
+  useEffect(() => {
+    setSteps(prevSteps =>
+      prevSteps.map(step => {
+        if (step.id === '1') return { ...step, completed: isProfileComplete }
+        if (step.id === '2') return { ...step, completed: hasConnections }
+        return step
+      })
+    )
+  }, [isProfileComplete, hasConnections])
+
+  const handleStepClick = (id: string) => {
+    // Map step IDs to their respective routes
+    const stepRoutes: { [key: string]: string } = {
+      '1': '/dashboard/settings',
+      '2': '/dashboard/connections',
+      '3': '/dashboard/blueprints',
+      '4': '/dashboard/marketplace',
+    }
+
+    // Navigate to the corresponding route
+    const route = stepRoutes[id]
+    if (route) {
+      router.push(route)
+    }
   }
 
   return (
@@ -79,7 +106,7 @@ export default function DashboardPage() {
           {steps.map((step) => (
             <div
               key={step.id}
-              onClick={() => toggleStep(step.id)}
+              onClick={() => handleStepClick(step.id)}
               className="flex items-start space-x-4 p-4 rounded-lg hover:bg-slate-50 cursor-pointer"
             >
               <div className="flex-shrink-0">
@@ -93,7 +120,7 @@ export default function DashboardPage() {
                 <h3 className="font-medium">{step.title}</h3>
                 <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
-              <Badge variant="outline">
+              <Badge variant={step.completed ? "default" : "outline"}>
                 {step.completed ? 'Completed' : 'To do'}
               </Badge>
             </div>

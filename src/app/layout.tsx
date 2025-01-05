@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProfileProvider } from '@/contexts/ProfileContext'
+import { ConnectionProvider } from '@/contexts/ConnectionContext'
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <div className="min-h-screen bg-background relative overflow-hidden">
           {/* Gradient background effects */}
@@ -32,8 +34,12 @@ export default function RootLayout({
           
           <div className="relative z-10">
             <AuthProvider>
-              {children}
-              <Toaster position="top-right" />
+              <ProfileProvider>
+                <ConnectionProvider>
+                  <Toaster position="top-right" />
+                  {children}
+                </ConnectionProvider>
+              </ProfileProvider>
             </AuthProvider>
           </div>
         </div>

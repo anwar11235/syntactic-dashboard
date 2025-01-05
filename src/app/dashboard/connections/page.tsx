@@ -1,268 +1,207 @@
 'use client'
 
-import { useState } from "react"
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Link2, Plus, CheckCircle, XCircle } from "lucide-react"
-import { connectionService } from "@/lib/connections"
+import { useConnections, sourceConfigs, type DataSourceType } from '@/contexts/ConnectionContext'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import Image from 'next/image'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 
 export default function ConnectionsPage() {
+  const { connections, isLoading, addConnection, removeConnection, testConnection } = useConnections()
+  const [selectedSource, setSelectedSource] = useState<DataSourceType | null>(null)
+  const [credentials, setCredentials] = useState<{ [key: string]: string }>({})
+  const [isConnecting, setIsConnecting] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [selectedConnection, setSelectedConnection] = useState<string | null>(null)
-  const [formData, setFormData] = useState<any>({})
 
-  const connections = [
-    {
-      id: 1,
-      name: "Dropbox",
-      description: "Connect to your Dropbox account to access and sync files",
-      status: "Not Connected",
-      icon: "https://cdn.worldvectorlogo.com/logos/dropbox-1.svg",
-      fields: [
-        { name: "accessToken", label: "Access Token", type: "password" }
-      ]
-    },
-    {
-      id: 2,
-      name: "Google Drive",
-      description: "Access and manage files from your Google Drive",
-      status: "Not Connected",
-      icon: "https://upload.wikimedia.org/wikipedia/commons/d/da/Google_Drive_logo.png",
-      fields: [
-        { name: "projectId", label: "Project ID", type: "text" },
-        { name: "keyFilename", label: "Key Filename", type: "text" }
-      ]
-    },
-    {
-      id: 3,
-      name: "AWS S3",
-      description: "Connect to Amazon S3 buckets for cloud storage",
-      status: "Not Connected",
-      icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Amazon-S3-Logo.svg/1200px-Amazon-S3-Logo.svg.png",
-      fields: [
-        { name: "accessKeyId", label: "Access Key ID", type: "password" },
-        { name: "secretAccessKey", label: "Secret Access Key", type: "password" },
-        { name: "region", label: "Region", type: "text" }
-      ]
-    },
-    {
-      id: 4,
-      name: "Snowflake",
-      description: "Connect to your Snowflake data warehouse",
-      status: "Not Connected",
-      icon: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Snowflake_Logo.svg",
-      fields: [
-        { name: "account", label: "Account", type: "text" },
-        { name: "username", label: "Username", type: "text" },
-        { name: "password", label: "Password", type: "password" },
-        { name: "warehouse", label: "Warehouse", type: "text" },
-        { name: "database", label: "Database", type: "text" }
-      ]
-    }
-  ]
-
-  const handleConnect = async (connection: any) => {
-    setSelectedConnection(connection.name.toLowerCase().replace(' ', ''))
-    setFormData({})
-    setIsDialogOpen(true)
+  const handleCredentialChange = (field: string, value: string) => {
+    setCredentials(prev => ({
+      ...prev,
+      [field]: value
+    }))
   }
 
-  const handleDisconnect = async (connection: any) => {
-    const serviceName = connection.name.toLowerCase().replace(' ', '')
+  const handleConnect = async () => {
+    if (!selectedSource) return
+
+    setIsConnecting(true)
     try {
-      let result: { success: boolean; message: string }
-      switch (serviceName) {
-        case 'dropbox':
-          result = await connectionService.disconnectDropbox()
-          break
-        case 'googledrive':
-          result = await connectionService.disconnectGoogleDrive()
-          break
-        case 'awss3':
-          result = await connectionService.disconnectS3()
-          break
-        case 'snowflake':
-          result = await connectionService.disconnectSnowflake()
-          break
-        default:
-          throw new Error('Unknown service')
+      // Test the connection first
+      const isValid = await testConnection(selectedSource, credentials)
+      if (!isValid) {
+        throw new Error('Connection test failed')
       }
 
-      if (result.success) {
-        toast.success(result.message)
-        // Update connection status in UI
-        connection.status = "Not Connected"
-      } else {
-        toast.error(result.message)
-      }
+      // If test succeeds, add the connection
+      await addConnection(selectedSource, credentials)
+      toast.success('Data source connected successfully')
+      setIsDialogOpen(false)
+      setSelectedSource(null)
+      setCredentials({})
     } catch (error) {
-      toast.error('Failed to disconnect')
+      toast.error('Failed to connect data source')
+    } finally {
+      setIsConnecting(false)
     }
   }
 
-  const handleSubmit = async () => {
+  const handleRemove = async (id: string) => {
     try {
-      let result: { success: boolean; message: string }
-      switch (selectedConnection) {
-        case 'dropbox':
-          result = await connectionService.connectToDropbox(formData.accessToken)
-          break
-        case 'googledrive':
-          result = await connectionService.connectToGoogleDrive(formData)
-          break
-        case 'awss3':
-          result = await connectionService.connectToS3(formData)
-          break
-        case 'snowflake':
-          result = await connectionService.connectToSnowflake(formData)
-          break
-        default:
-          throw new Error('Unknown service')
-      }
-
-      if (result.success) {
-        toast.success(result.message)
-        setIsDialogOpen(false)
-        // Update connection status in UI
-        const connection = connections.find(c => 
-          c.name.toLowerCase().replace(' ', '') === selectedConnection
-        )
-        if (connection) {
-          connection.status = "Connected"
-        }
-      } else {
-        toast.error(result.message)
-      }
+      await removeConnection(id)
+      toast.success('Data source removed successfully')
     } catch (error) {
-      toast.error('Failed to connect')
+      toast.error('Failed to remove data source')
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Connections</h1>
+          <h1 className="text-3xl font-bold">Data Sources</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your data source connections and integrations
+            Connect and manage your data sources
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Connection
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Data Source
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add Data Source</DialogTitle>
+              <DialogDescription>
+                Choose a data source and provide the required credentials
+              </DialogDescription>
+            </DialogHeader>
+            
+            {!selectedSource ? (
+              <div className="grid grid-cols-2 gap-4">
+                {Object.entries(sourceConfigs).map(([type, config]) => (
+                  <Card 
+                    key={type}
+                    className="cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => setSelectedSource(type as DataSourceType)}
+                  >
+                    <CardContent className="p-4 flex flex-col items-center justify-center space-y-2">
+                      <div className="w-12 h-12 relative">
+                        <Image
+                          src={config.icon}
+                          alt={config.name}
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <h3 className="font-medium text-center">{config.name}</h3>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 py-4">
+                  {sourceConfigs[selectedSource].requiredFields.map((field) => (
+                    <div key={field} className="space-y-2">
+                      <Label htmlFor={field}>
+                        {field.split(/(?=[A-Z])/).join(' ').toLowerCase()}
+                      </Label>
+                      <Input
+                        id={field}
+                        type={field.toLowerCase().includes('password') ? 'password' : 'text'}
+                        value={credentials[field] || ''}
+                        onChange={(e) => handleCredentialChange(field, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <DialogFooter className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedSource(null)
+                      setCredentials({})
+                    }}
+                  >
+                    Back
+                  </Button>
+                  <Button onClick={handleConnect} disabled={isConnecting}>
+                    {isConnecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isConnecting ? 'Connecting...' : 'Connect'}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {connections.map((connection) => (
-          <Card key={connection.id} className="flex flex-col">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+      <div className="grid gap-6">
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-6 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : connections.length === 0 ? (
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center space-y-2">
+                <h3 className="font-medium">No data sources connected</h3>
+                <p className="text-sm text-muted-foreground">
+                  Add your first data source to get started
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          connections.map((connection) => (
+            <Card key={connection.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={connection.icon}
-                      alt={`${connection.name} logo`}
+                  <div className="w-10 h-10 relative">
+                    <Image
+                      src={sourceConfigs[connection.type].icon}
+                      alt={connection.name}
+                      fill
                       className="object-contain"
                     />
                   </div>
                   <div>
-                    <CardTitle className="text-xl">{connection.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {connection.description}
-                    </p>
+                    <CardTitle>{connection.name}</CardTitle>
+                    <CardDescription>
+                      Connected {new Date(connection.created_at).toLocaleDateString()}
+                    </CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  {connection.status === "Connected" ? (
-                    <span className="flex items-center text-green-600 text-sm">
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Connected
-                    </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => handleRemove(connection.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  {connection.last_sync ? (
+                    <p>Last synced: {new Date(connection.last_sync).toLocaleString()}</p>
                   ) : (
-                    <span className="flex items-center text-gray-400 text-sm">
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Not Connected
-                    </span>
+                    <p>No sync history</p>
                   )}
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="space-y-2 text-sm text-muted-foreground">
-                {connection.status === "Connected" && (
-                  <>
-                    <div className="flex justify-between">
-                      <span>Last synced:</span>
-                      <span>5 minutes ago</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              {connection.status === "Connected" ? (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleDisconnect(connection)}
-                >
-                  <Link2 className="h-4 w-4 mr-2" />
-                  Disconnect
-                </Button>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleConnect(connection)}
-                >
-                  <Link2 className="h-4 w-4 mr-2" />
-                  Connect
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Connect to {selectedConnection}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {selectedConnection && connections
-              .find(c => c.name.toLowerCase().replace(' ', '') === selectedConnection)
-              ?.fields.map((field) => (
-                <div key={field.name} className="space-y-2">
-                  <Label htmlFor={field.name}>{field.label}</Label>
-                  <Input
-                    id={field.name}
-                    type={field.type}
-                    value={formData[field.name] || ''}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      [field.name]: e.target.value
-                    })}
-                  />
-                </div>
-              ))}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit}>
-              Connect
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 } 
