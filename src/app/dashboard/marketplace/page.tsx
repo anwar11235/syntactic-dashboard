@@ -4,8 +4,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DatasetNutritionCard } from "@/components/DatasetNutritionCard"
 import { DatasetPreview } from "@/components/DatasetPreview"
+import { Input } from "@/components/ui/input"
+import { useState } from "react"
 
 export default function MarketplacePage() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+
   const datasets = [
     {
       id: 1,
@@ -141,6 +146,30 @@ export default function MarketplacePage() {
     }
   ]
 
+  // Get unique categories from datasets
+  const categories = Array.from(new Set(datasets.map(dataset => dataset.category)))
+
+  // Function to get category tag colors
+  const getCategoryTag = (category: string) => {
+    const tags = {
+      'Economics': 'bg-blue-100 text-blue-700',
+      'Social Media': 'bg-purple-100 text-purple-700',
+      'Environment': 'bg-green-100 text-green-700',
+      'Market Research': 'bg-orange-100 text-orange-700',
+      'AI Training': 'bg-indigo-100 text-indigo-700'
+    } as const;
+    
+    return tags[category as keyof typeof tags] || 'bg-gray-100 text-gray-700';
+  }
+
+  // Filter datasets based on search query and selected category
+  const filteredDatasets = datasets.filter(dataset => {
+    const matchesSearch = dataset.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         dataset.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = !selectedCategory || dataset.category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
+
   return (
     <div className="space-y-6">
       <div>
@@ -150,13 +179,46 @@ export default function MarketplacePage() {
         </p>
       </div>
 
+      {/* Search and Filter Section */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Input
+            placeholder="Search datasets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="sm:max-w-[300px]"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={selectedCategory === null ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(null)}
+              className="h-10"
+            >
+              All
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                className={`h-10 ${selectedCategory === category ? "" : getCategoryTag(category)}`}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {datasets.map((dataset) => (
+        {filteredDatasets.map((dataset) => (
           <Card key={dataset.id} className="flex flex-col">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl">{dataset.title}</CardTitle>
-                <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm">
+                <span className={`px-2.5 py-1.5 rounded-md text-sm font-medium ${getCategoryTag(dataset.category)}`}>
                   {dataset.category}
                 </span>
               </div>
@@ -164,17 +226,29 @@ export default function MarketplacePage() {
             <CardContent className="flex-1">
               <p className="text-muted-foreground">{dataset.description}</p>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-3">
-              <div className="flex items-center justify-between w-full">
+            <CardFooter className="flex flex-col space-y-4">
+              <div className="flex items-center justify-between w-full border-t border-border/50 pt-4">
                 <span className="text-lg font-bold">{dataset.price}</span>
-                <DatasetPreview dataset={dataset} />
               </div>
-              <div className="flex justify-between w-full gap-3">
-                <Button className="flex-1" variant="outline" size="sm">Lease Dataset</Button>
-                <Button className="flex-1" variant="outline" size="sm">Purchase Dataset</Button>
-              </div>
-              <div className="w-full">
-                <DatasetNutritionCard dataset={dataset} />
+              <div className="grid grid-cols-2 gap-3 w-full">
+                <Button 
+                  className="bg-primary hover:bg-primary/90"
+                  size="sm"
+                >
+                  Purchase
+                </Button>
+                <Button 
+                  className="bg-primary hover:bg-primary/90"
+                  size="sm"
+                >
+                  Lease
+                </Button>
+                <div className="w-full">
+                  <DatasetPreview dataset={dataset} />
+                </div>
+                <div className="w-full">
+                  <DatasetNutritionCard dataset={dataset} />
+                </div>
               </div>
             </CardFooter>
           </Card>

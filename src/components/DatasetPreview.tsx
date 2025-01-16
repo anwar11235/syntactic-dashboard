@@ -182,7 +182,13 @@ export function DatasetPreview({ dataset }: DatasetPreviewProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Explore Dataset</Button>
+        <Button 
+          variant="outline"
+          className="border-muted-foreground/20 hover:bg-muted w-full"
+          size="sm"
+        >
+          Explore Dataset
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl">
         <DialogHeader>

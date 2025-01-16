@@ -34,11 +34,17 @@ export function DatasetNutritionCard({ dataset }: DatasetNutritionCardProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Dataset Nutrition Card</Button>
+        <Button 
+          variant="outline"
+          className="border-muted-foreground/20 hover:bg-muted w-full"
+          size="sm"
+        >
+          Quality Card
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Dataset Nutrition Card</DialogTitle>
+          <DialogTitle>Dataset Quality Card</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6 py-4">
